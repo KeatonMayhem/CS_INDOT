@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Stream Player</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    #selection-menu, #player {
+      display: none;
+    }
+    #selection-menu.active, #player.active {
+      display: block;
+    }
+    .button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .button:hover {
+      background-color: #45a049;
+    }
+    .hidden {
+      display: none;
+    }
+    .camera-details {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Selection Menu -->
+  <div id="selection-menu" class="active">
+    <h2>Select a Camera</h2>
+    <button class="button" onclick="startStream('camera1')">Camera 1</button>
+    <button class="button" onclick="startStream('camera2')">Camera 2</button>
+    <button class="button" onclick="startStream('camera3')">Camera 3</button>
+    <button class="button" onclick="startStream('camera4')">Camera 4</button>
+    <h6>version 0.0.7</h6>
+  </div>
+
+  <!-- Video Player -->
+  <div id="player">
+    <h2>Camera Stream</h2>
+    <button class="button" onclick="goBack()">Back to Camera Selection</button>
+    <br>
+    <video id="camera1" class="hidden" controls autoplay muted></video>
+    <video id="camera2" class="hidden" controls autoplay muted></video>
+    <video id="camera3" class="hidden" controls autoplay muted></video>
+    <video id="camera4" class="hidden" controls autoplay muted></video>
+    <div id="camera-details" class="camera-details"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script>
+    const cameraStreams = {
+      'camera1': {
+        url: 'https://skysfs4.trafficwise.org/rtplive/INDOT_658_0xC-sSuf836lLUG9/chunklist_w1366668844.m3u8',
+        details: {
+          location: '39.566112,-86.2470477',
+          direction: 'S',
+          description: 'SR 144 and Whiteland Rd.',
+        },
+      },
+      'camera2': {
+        url: 'https://skysfs4.trafficwise.org/rtplive/INDOT_122_j1oPZLX3ASg96AhV/chunklist_w462413778.m3u8',
+        details: {
+          location: '39.502144,-86.3297727',
+          direction: 'SW',
+          description: '69 North of Henderson Ford Rd.',
+        },
+      },
+      'camera3': {
+        url: 'https://skysfs3.trafficwise.org/rtplive/INDOT_189_sosHJYxAzxAIKhVY/chunklist_w1525257403.m3u8',
+        details: {
+          location: '39.431242,-86.3943727',
+          direction: 'SW',
+          description: 'SR 44 North of Martinsville',
+        },
+      },
+      'camera4': {
+        url: 'https://skysfs3.trafficwise.org/rtplive/INDOT_159_AA1RWSrwkYhfVmy8/chunklist_w1245806709.m3u8',
+        details: {
+          location: '39.403712,-86.4472007',
+          direction: 'SE',
+          description: 'SR 39 Southside of Martinsville',
+        },
+      },
+    };
+
+    // Preload streams
+    function preloadStreams() {
+      Object.keys(cameraStreams).forEach(cameraId => {
+        const videoElement = document.getElementById(cameraId);
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(cameraStreams[cameraId].url);
+          hls.attachMedia(videoElement);
+        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+          videoElement.src = cameraStreams[cameraId].url;
+        }
+      });
+    }
+
+    // Start stream for the selected camera
+    function startStream(cameraId) {
+      // Switch to the player view
+      document.getElementById('selection-menu').classList.remove('active');
+      document.getElementById('player').classList.add('active');
+
+      // Hide all video elements and show the selected one
+      Object.keys(cameraStreams).forEach(id => {
+        const videoElement = document.getElementById(id);
+        videoElement.classList.add('hidden');
+        videoElement.pause();
+      });
+
+      const selectedVideo = document.getElementById(cameraId);
+      selectedVideo.classList.remove('hidden');
+      selectedVideo.play();
+
+      // Display camera details
+      const details = cameraStreams[cameraId].details;
+      const detailsDiv = document.getElementById('camera-details');
+      const [lat, lon] = details.location.split(',').map(coord => coord.trim());
+      const googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+
+      detailsDiv.innerHTML = `
+        <p><strong>Location:</strong> ${details.location} (<a href="${googleMapsLink}" target="_blank">View on Google Maps</a>)</p>
+        <p><strong>Direction:</strong> ${details.direction}</p>
+        <p><strong>Description:</strong> ${details.description}</p>
+      `;
+    }
+
+    // Go back to the selection menu
+    function goBack() {
+      // Switch to the selection menu
+      document.getElementById('player').classList.remove('active');
+      document.getElementById('selection-menu').classList.add('active');
+
+      // Stop all videos
+      Object.keys(cameraStreams).forEach(id => {
+        const videoElement = document.getElementById(id);
+        videoElement.pause();
+      });
+
+      // Clear camera details
+      document.getElementById('camera-details').innerHTML = '';
+    }
+
+    // Preload all streams when the page loads
+    window.onload = preloadStreams;
+  </script>
+
+</body>
+</html>
