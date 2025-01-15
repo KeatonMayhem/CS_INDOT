@@ -3,64 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSM and Leaflet with GPS</title>
-  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+  <title>GPS Location with Toggle</title>
   <style>
-    #map {
-      width: 900px;
-      height: 580px;
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
     }
-    #toggleTracking {
-      margin: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
+    #output {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
+  <h1>Get GPS Location</h1>
   <button id="toggleTracking">Start Tracking</button>
-  <div id="map"></div>
+  <div id="output"></div>
 
-  <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
   <script>
-    // Create map options
-    const initialLatitude = 0; // Default latitude
-    const initialLongitude = 0; // Default longitude
-
-    const mapOptions = {
-      center: [initialLatitude, initialLongitude],
-      zoom: 10
-    };
-
-    // Create map object
-    const map = new L.map('map', mapOptions);
-
-    // Create and add layer to the map
-    const layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-    map.addLayer(layer);
-
-    // Marker for current location
-    let marker = null;
-
-    // Button to toggle tracking
-    const toggleButton = document.getElementById("toggleTracking");
     let intervalId = null;
 
-    function updateMap(latitude, longitude) {
-      // Update map center
-      map.setView([latitude, longitude], map.getZoom());
-
-      // Update marker position
-      if (marker) {
-        marker.setLatLng([latitude, longitude]);
-      } else {
-        marker = L.marker([latitude, longitude]).addTo(map);
-      }
-    }
+    const output = document.getElementById("output");
+    const toggleButton = document.getElementById("toggleTracking");
 
     function getLocation() {
       if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
+        output.textContent = "Geolocation is not supported by your browser.";
         return;
       }
 
@@ -69,11 +36,27 @@
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
 
-          // Update map and marker
-          updateMap(latitude, longitude);
+          output.innerHTML = `
+            <p>Latitude: ${latitude}</p>
+            <p>Longitude: ${longitude}</p>
+            <p>Last updated: ${new Date().toLocaleTimeString()}</p>
+          `;
         },
         (error) => {
-          console.error("Error getting location:", error);
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              output.textContent = "User denied the request for Geolocation.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              output.textContent = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              output.textContent = "The request to get user location timed out.";
+              break;
+            case error.UNKNOWN_ERROR:
+              output.textContent = "An unknown error occurred.";
+              break;
+          }
         }
       );
     }
