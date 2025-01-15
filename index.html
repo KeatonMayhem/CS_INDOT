@@ -37,7 +37,6 @@
   </style>
 </head>
 <body>
-
   <!-- Selection Menu -->
   <div id="selection-menu" class="active">
     <h2>Select a Camera</h2>
@@ -47,7 +46,6 @@
     <button class="button" onclick="startStream('camera4')">Camera 4</button>
     <h6>version 0.0.7</h6>
   </div>
-
   <!-- Video Player -->
   <div id="player">
     <h2>Camera Stream</h2>
@@ -59,7 +57,6 @@
     <video id="camera4" class="hidden" controls autoplay muted></video>
     <div id="camera-details" class="camera-details"></div>
   </div>
-
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
@@ -97,7 +94,6 @@
         },
       },
     };
-
     // Preload streams
     function preloadStreams() {
       Object.keys(cameraStreams).forEach(cameraId => {
@@ -111,56 +107,46 @@
         }
       });
     }
-
     // Start stream for the selected camera
     function startStream(cameraId) {
       // Switch to the player view
       document.getElementById('selection-menu').classList.remove('active');
       document.getElementById('player').classList.add('active');
-
       // Hide all video elements and show the selected one
       Object.keys(cameraStreams).forEach(id => {
         const videoElement = document.getElementById(id);
         videoElement.classList.add('hidden');
         videoElement.pause();
       });
-
       const selectedVideo = document.getElementById(cameraId);
       selectedVideo.classList.remove('hidden');
       selectedVideo.play();
-
       // Display camera details
       const details = cameraStreams[cameraId].details;
       const detailsDiv = document.getElementById('camera-details');
       const [lat, lon] = details.location.split(',').map(coord => coord.trim());
       const googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
-
       detailsDiv.innerHTML = `
         <p><strong>Location:</strong> ${details.location} (<a href="${googleMapsLink}" target="_blank">View on Google Maps</a>)</p>
         <p><strong>Direction:</strong> ${details.direction}</p>
         <p><strong>Description:</strong> ${details.description}</p>
       `;
     }
-
     // Go back to the selection menu
     function goBack() {
       // Switch to the selection menu
       document.getElementById('player').classList.remove('active');
       document.getElementById('selection-menu').classList.add('active');
-
       // Stop all videos
       Object.keys(cameraStreams).forEach(id => {
         const videoElement = document.getElementById(id);
         videoElement.pause();
       });
-
       // Clear camera details
       document.getElementById('camera-details').innerHTML = '';
     }
-
     // Preload all streams when the page loads
     window.onload = preloadStreams;
   </script>
-
 </body>
 </html>
