@@ -34,6 +34,10 @@
       font-size: 16px;
       color: #333;
     }
+    #output {
+      margin-top: 20px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -44,8 +48,9 @@
     <button class="button" onclick="startStream('camera2')">Camera 2</button>
     <button class="button" onclick="startStream('camera3')">Camera 3</button>
     <button class="button" onclick="startStream('camera4')">Camera 4</button>
-    <h6>version 0.0.7</h6>
+    <h6>version 0.0.8</h6>
   </div>
+
   <!-- Video Player -->
   <div id="player">
     <h2>Camera Stream</h2>
@@ -56,7 +61,9 @@
     <video id="camera3" class="hidden" controls autoplay muted></video>
     <video id="camera4" class="hidden" controls autoplay muted></video>
     <div id="camera-details" class="camera-details"></div>
+    <div id="output"></div> <!-- Distance to camera -->
   </div>
+
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
@@ -94,6 +101,11 @@
         },
       },
     };
+
+    let userLatitude = null;
+    let userLongitude = null;
+    let intervalId = null;
+
     // Preload streams
     function preloadStreams() {
       Object.keys(cameraStreams).forEach(cameraId => {
@@ -107,6 +119,7 @@
         }
       });
     }
+
     // Start stream for the selected camera
     function startStream(cameraId) {
       // Switch to the player view
@@ -131,7 +144,65 @@
         <p><strong>Direction:</strong> ${details.direction}</p>
         <p><strong>Description:</strong> ${details.description}</p>
       `;
+
+      // Start tracking user location
+      trackUserLocation(cameraId, lat, lon);
     }
+
+    // Calculate distance between two coordinates using the Haversine formula
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth's radius in meters
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
+      const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+      const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c; // Distance in meters
+    }
+
+    // Track user's location and calculate distance to the camera
+    function trackUserLocation(cameraId, cameraLat, cameraLon) {
+      if (!navigator.geolocation) {
+        document.getElementById('output').textContent = "Geolocation is not supported by your browser.";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          userLatitude = position.coords.latitude;
+          userLongitude = position.coords.longitude;
+
+          // Calculate the distance from the camera
+          const distance = calculateDistance(userLatitude, userLongitude, cameraLat, cameraLon);
+          document.getElementById('output').innerHTML = `
+            <p>Your Location: Latitude: ${userLatitude}, Longitude: ${userLongitude}</p>
+            <p>Distance to camera: ${distance.toFixed(2)} meters</p>
+          `;
+        },
+        (error) => {
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              document.getElementById('output').textContent = "User denied the request for Geolocation.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              document.getElementById('output').textContent = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              document.getElementById('output').textContent = "The request to get user location timed out.";
+              break;
+            case error.UNKNOWN_ERROR:
+              document.getElementById('output').textContent = "An unknown error occurred.";
+              break;
+          }
+        }
+      );
+    }
+
     // Go back to the selection menu
     function goBack() {
       // Switch to the selection menu
@@ -144,7 +215,9 @@
       });
       // Clear camera details
       document.getElementById('camera-details').innerHTML = '';
+      document.getElementById('output').innerHTML = ''; // Clear distance info
     }
+
     // Preload all streams when the page loads
     window.onload = preloadStreams;
   </script>
