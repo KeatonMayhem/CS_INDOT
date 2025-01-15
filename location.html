@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSM and Leaflet with GPS</title>
+  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+  <style>
+    #map {
+      width: 900px;
+      height: 580px;
+    }
+    #toggleTracking {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <button id="toggleTracking">Start Tracking</button>
+  <div id="map"></div>
+
+  <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+  <script>
+    // Create map options
+    const initialLatitude = 0; // Default latitude
+    const initialLongitude = 0; // Default longitude
+
+    const mapOptions = {
+      center: [initialLatitude, initialLongitude],
+      zoom: 10
+    };
+
+    // Create map object
+    const map = new L.map('map', mapOptions);
+
+    // Create and add layer to the map
+    const layer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+    map.addLayer(layer);
+
+    // Marker for current location
+    let marker = null;
+
+    // Button to toggle tracking
+    const toggleButton = document.getElementById("toggleTracking");
+    let intervalId = null;
+
+    function updateMap(latitude, longitude) {
+      // Update map center
+      map.setView([latitude, longitude], map.getZoom());
+
+      // Update marker position
+      if (marker) {
+        marker.setLatLng([latitude, longitude]);
+      } else {
+        marker = L.marker([latitude, longitude]).addTo(map);
+      }
+    }
+
+    function getLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+
+          // Update map and marker
+          updateMap(latitude, longitude);
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+        }
+      );
+    }
+
+    toggleButton.addEventListener("click", () => {
+      if (intervalId === null) {
+        // Start tracking
+        getLocation(); // Fetch location immediately
+        intervalId = setInterval(getLocation, 5000); // Refresh every 5 seconds
+        toggleButton.textContent = "Stop Tracking";
+      } else {
+        // Stop tracking
+        clearInterval(intervalId);
+        intervalId = null;
+        toggleButton.textContent = "Start Tracking";
+      }
+    });
+  </script>
+</body>
+</html>
