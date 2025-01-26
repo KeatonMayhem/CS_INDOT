@@ -3,101 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC Scanner with Airtable</title>
+    <title>Airtable API Example</title>
 </head>
 <body>
-    <h1>NFC Scanner with Lookup</h1>
-    <button id="startScan">Start NFC Scan</button>
+    <h1>NFC Airtable Example</h1>
+    <button id="fetchData">Fetch NFC Data</button>
+    <button id="addData">Add NFC Data</button>
     <div id="output"></div>
 
     <script>
-        const API_KEY = 'patzZ6CbTcDkaxdpS.79173b498ca77f4302860f25f5b2228809538fc337f98133e925dfa2fc9e676f'; // Replace with your Airtable API key
+        const API_KEY = 'patzZ6CbTcDkaxdpS.79173b498ca77f4302860f25f5b2228809538fc337f98133e925dfa2fc9e676f';
         const BASE_ID = 'appCd5sXFHe4Y0p6t'; // Replace with your base ID
-        const NFC_TABLE = 'tblaM88SIxY8VgoR7'; // Name of the NFC table
-        const SCAN_LOG_TABLE = 'tblpHg1ljypWgKkp0'; // Name of the Scan Log table
+        const TABLE_NAME = 'tblpHg1ljypWgKkp0'; // Replace with your table name
 
         const headers = {
             Authorization: `Bearer ${API_KEY}`,
             'Content-Type': 'application/json',
         };
 
-        const startNfcScan = async () => {
-            const output = document.getElementById('output');
-            output.textContent = "Waiting for NFC scan...";
-
-            if ('NDEFReader' in window) {
-                try {
-                    const ndef = new NDEFReader();
-                    await ndef.scan();
-                    output.textContent = "NFC scan started. Tap a tag.";
-                    
-                    ndef.addEventListener('reading', event => {
-                        const { serialNumber } = event;
-                        output.textContent = `NFC Tag Scanned: ${serialNumber}`;
-
-                        // Step 1: Fetch record from NFC table
-                        fetchNfcRecord(serialNumber);
-                    });
-                } catch (error) {
-                    console.error('Error starting NFC scan:', error);
-                    output.textContent = "NFC scan failed. Ensure your device supports NFC and try again.";
-                }
-            } else {
-                output.textContent = "Web NFC is not supported in this browser.";
-            }
-        };
-
-        const fetchNfcRecord = (nfcUID) => {
-            fetch(`https://api.airtable.com/v0/${BASE_ID}/${NFC_TABLE}?filterByFormula={NFC_UID}='${nfcUID}'`, {
+        // Fetch data from Airtable
+        document.getElementById('fetchData').addEventListener('click', () => {
+            fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`, {
                 method: 'GET',
                 headers: headers,
             })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.records.length > 0) {
-                        const record = data.records[0]; // Fetch the first matching record
-                        const monsterId = record.fields.Monster_ID;
-                        const locationName = record.fields.Location || 'Unknown';
-
-                        // Display information
-                        const output = document.getElementById('output');
-                        output.textContent = `NFC UID: ${nfcUID}\nMonster: ${monsterId}\nLocation: ${locationName}`;
-
-                        // Step 2: Log the scan
-                        logScanToAirtable(nfcUID, monsterId, locationName);
-                    } else {
-                        alert('No matching record found in NFC table.');
-                    }
+                    const output = document.getElementById('output');
+                    output.innerHTML = JSON.stringify(data.records, null, 2);
                 })
-                .catch(error => console.error('Error fetching NFC record:', error));
-        };
+                .catch(error => console.error('Error fetching data:', error));
+        });
 
-        const logScanToAirtable = (nfcUID, monsterId, locationName) => {
-            const userId = "example_user_id"; // Replace with dynamic user ID if needed
-            const scanLogRecord = {
+        // Add data to Airtable
+        document.getElementById('addData').addEventListener('click', () => {
+            const nfcUID = '04:44:F7:24:5F:61:80'; // Example NFC UID
+            const monsterID = 'M12345'; // Example Monster ID
+
+            const record = {
                 fields: {
-                    NFC_UID: nfcUID,
-                    Monster_ID: monsterId,
-                    Location: locationName,
-                    Scanned_By: userId,
-                    Scan_Timestamp: new Date().toISOString(),
+                    Test: nfcUID
                 },
             };
 
-            fetch(`https://api.airtable.com/v0/${BASE_ID}/${SCAN_LOG_TABLE}`, {
+            fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`, {
                 method: 'POST',
                 headers: headers,
-                body: JSON.stringify({ records: [scanLogRecord] }),
+                body: JSON.stringify({ records: [record] }),
             })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Scan logged:', data);
-                    alert('Scan successfully logged!');
+                    console.log('Added record:', data);
+                    alert('Record added successfully!');
                 })
-                .catch(error => console.error('Error logging scan:', error));
-        };
-
-        document.getElementById('startScan').addEventListener('click', startNfcScan);
+                .catch(error => console.error('Error adding record:', error));
+        });
     </script>
 </body>
 </html>
