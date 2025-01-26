@@ -1,63 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Airtable API Example</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post to Airtable</title>
+  <script>
+    // Replace with your Airtable API details
+    const AIRTABLE_API_KEY = 'patzZ6CbTcDkaxdpS.79173b498ca77f4302860f25f5b2228809538fc337f98133e925dfa2fc9e676f';
+    const BASE_ID = 'app05DRLpsD2k6GJG';
+    const TABLE_NAME = 'tblMgIfaPpLKqywod';
+
+    // Function to post data to Airtable
+    async function postDataToAirtable() {
+      const inputField = document.getElementById('inputField');
+      const inputValue = inputField.value;
+
+      // Check if the input is empty
+      if (!inputValue) {
+        alert('Please enter a value.');
+        return;
+      }
+
+      const url = `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`;
+      const data = {
+        fields: {
+          "Name": inputValue // Replace with your actual Airtable field name
+        }
+      };
+
+      const options = {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      };
+
+      try {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        if (response.ok) {
+          alert('Data successfully submitted to Airtable!');
+          console.log('Response:', result);
+
+          // Clear the input field after submission
+          inputField.value = '';
+        } else {
+          alert('Failed to submit data.');
+          console.error('Error:', result);
+        }
+      } catch (error) {
+        alert('An error occurred.');
+        console.error('Error:', error);
+      }
+    }
+  </script>
 </head>
 <body>
-    <h1>NFC Airtable Example</h1>
-    <button id="fetchData">Fetch NFC Data</button>
-    <button id="addData">Add NFC Data</button>
-    <div id="output"></div>
 
-    <script>
-        const API_KEY = 'patzZ6CbTcDkaxdpS.79173b498ca77f4302860f25f5b2228809538fc337f98133e925dfa2fc9e676f';
-        const BASE_ID = 'appCd5sXFHe4Y0p6t'; // Replace with your base ID
-        const TABLE_NAME = 'tblpHg1ljypWgKkp0'; // Replace with your table name
+  <h2>Submit Data to Airtable</h2>
 
-        const headers = {
-            Authorization: `Bearer ${API_KEY}`,
-            'Content-Type': 'application/json',
-        };
+  <!-- Input form for data -->
+  <input type="text" id="inputField" placeholder="Enter some text">
+  <button onclick="postDataToAirtable()">Submit</button>
 
-        // Fetch data from Airtable
-        document.getElementById('fetchData').addEventListener('click', () => {
-            fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`, {
-                method: 'GET',
-                headers: headers,
-            })
-                .then(response => response.json())
-                .then(data => {
-                    const output = document.getElementById('output');
-                    output.innerHTML = JSON.stringify(data.records, null, 2);
-                })
-                .catch(error => console.error('Error fetching data:', error));
-        });
-
-        // Add data to Airtable
-        document.getElementById('addData').addEventListener('click', () => {
-            const nfcUID = '04:44:F7:24:5F:61:80'; // Example NFC UID
-            const monsterID = 'M12345'; // Example Monster ID
-
-            const record = {
-                fields: {
-                    Test: nfcUID
-                },
-            };
-
-            fetch(`https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`, {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ records: [record] }),
-            })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Added record:', data);
-                    alert('Record added successfully!');
-                })
-                .catch(error => console.error('Error adding record:', error));
-        });
-    </script>
 </body>
 </html>
