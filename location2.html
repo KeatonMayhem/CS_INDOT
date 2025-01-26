@@ -1,86 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OpenStreetMap with Current Location</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    #map {
-      width: 100%;
-      height: 500px;
-      border: 1px solid #ccc;
-      margin-top: 20px;
-    }
-    #toggleTracking {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Scanner with Airtable</title>
 </head>
 <body>
-  <h1>Track Current Location</h1>
-  <button id="toggleTracking">Start Tracking</button>
-  <iframe
-    id="map"
-    src="https://www.openstreetmap.org/export/embed.html?bbox=0%2C0%2C0%2C0&layer=mapnik&marker=0%2C0"
-    allowfullscreen
-  ></iframe>
+    <h1>NFC Scanner with Lookup</h1>
+    <button id="startScan">Start NFC Scan</button>
+    <div id="output"></div>
 
-  <script>
-    const toggleButton = document.getElementById("toggleTracking");
-    const mapIframe = document.getElementById("map");
-    let intervalId = null;
+    <script>
+        const API_KEY = 'patzZ6CbTcDkaxdpS.79173b498ca77f4302860f25f5b2228809538fc337f98133e925dfa2fc9e676f'; // Replace with your Airtable API key
+        const BASE_ID = 'appCd5sXFHe4Y0p6t'; // Replace with your base ID
+        const NFC_TABLE = 'tblaM88SIxY8VgoR7'; // Name of the NFC table
+        const SCAN_LOG_TABLE = 'tblpHg1ljypWgKkp0'; // Name of the Scan Log table
 
-    function updateMap(latitude, longitude) {
-      // Update the iframe's `src` attribute with the current location
-      const bboxSize = 0.01; // Defines the bounding box size for the map
-      const bbox = [
-        longitude - bboxSize,
-        latitude - bboxSize,
-        longitude + bboxSize,
-        latitude + bboxSize
-      ].join("%2C");
-      mapIframe.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude}%2C${longitude}`;
-    }
+        const headers = {
+            Authorization: `Bearer ${API_KEY}`,
+            'Content-Type': 'application/json',
+        };
 
-    function getLocation() {
-      if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
-        return;
-      }
+        const startNfcScan = async () => {
+            const output = document.getElementById('output');
+            output.textContent = "Waiting for NFC scan...";
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
+            if ('NDEFReader' in window) {
+                try {
+                    const ndef = new NDEFReader();
+                    await ndef.scan();
+                    output.textContent = "NFC scan started. Tap a tag.";
+                    
+                    ndef.addEventListener('reading', event => {
+                        const { serialNumber } = event;
+                        output.textContent = `NFC Tag Scanned: ${serialNumber}`;
 
-          // Update the map with the current location
-          updateMap(latitude, longitude);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-        }
-      );
-    }
+                        // Step 1: Fetch record from NFC table
+                        fetchNfcRecord(serialNumber);
+                    });
+                } catch (error) {
+                    console.error('Error starting NFC scan:', error);
+                    output.textContent = "NFC scan failed. Ensure your device supports NFC and try again.";
+                }
+            } else {
+                output.textContent = "Web NFC is not supported in this browser.";
+            }
+        };
 
-    toggleButton.addEventListener("click", () => {
-      if (intervalId === null) {
-        // Start tracking
-        getLocation(); // Get location immediately
-        intervalId = setInterval(getLocation, 5000); // Update every 5 seconds
-        toggleButton.textContent = "Stop Tracking";
-      } else {
-        // Stop tracking
-        clearInterval(intervalId);
-        intervalId = null;
-        toggleButton.textContent = "Start Tracking";
-      }
-    });
-  </script>
+        const fetchNfcRecord = (nfcUID) => {
+            fetch(`https://api.airtable.com/v0/${BASE_ID}/${NFC_TABLE}?filterByFormula={NFC_UID}='${nfcUID}'`, {
+                method: 'GET',
+                headers: headers,
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.records.length > 0) {
+                        const record = data.records[0]; // Fetch the first matching record
+                        const monsterId = record.fields.Monster_ID;
+                        const locationName = record.fields.Location || 'Unknown';
+
+                        // Display information
+                        const output = document.getElementById('output');
+                        output.textContent = `NFC UID: ${nfcUID}\nMonster: ${monsterId}\nLocation: ${locationName}`;
+
+                        // Step 2: Log the scan
+                        logScanToAirtable(nfcUID, monsterId, locationName);
+                    } else {
+                        alert('No matching record found in NFC table.');
+                    }
+                })
+                .catch(error => console.error('Error fetching NFC record:', error));
+        };
+
+        const logScanToAirtable = (nfcUID, monsterId, locationName) => {
+            const userId = "example_user_id"; // Replace with dynamic user ID if needed
+            const scanLogRecord = {
+                fields: {
+                    NFC_UID: nfcUID,
+                    Monster_ID: monsterId,
+                    Location: locationName,
+                    Scanned_By: userId,
+                    Scan_Timestamp: new Date().toISOString(),
+                },
+            };
+
+            fetch(`https://api.airtable.com/v0/${BASE_ID}/${SCAN_LOG_TABLE}`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ records: [scanLogRecord] }),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Scan logged:', data);
+                    alert('Scan successfully logged!');
+                })
+                .catch(error => console.error('Error logging scan:', error));
+        };
+
+        document.getElementById('startScan').addEventListener('click', startNfcScan);
+    </script>
 </body>
 </html>
